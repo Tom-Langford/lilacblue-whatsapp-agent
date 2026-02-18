@@ -1,0 +1,15 @@
+[Unit]
+Description=ClawdBot WhatsApp Gateway
+After=network.target
+
+[Service]
+Type=simple
+User=clawdbot
+WorkingDirectory=/opt/clawdbot/lilacblue-whatsapp-agent
+ExecStart=/usr/bin/node /opt/clawdbot/lilacblue-whatsapp-agent/dist/main.js
+Restart=always
+RestartSec=10
+EnvironmentFile=/etc/clawdbot/env
+
+[Install]
+WantedBy=multi-user.target

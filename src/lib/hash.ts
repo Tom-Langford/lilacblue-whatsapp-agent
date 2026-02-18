@@ -1,0 +1,9 @@
+/**
+ * SHA256 utility for media integrity.
+ */
+
+import { createHash } from "crypto";
+
+export function sha256Hex(buffer: Buffer): string {
+  return createHash("sha256").update(buffer).digest("hex");
+}
