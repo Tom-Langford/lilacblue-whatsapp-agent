@@ -5,7 +5,7 @@
  */
 
 import { loadConfig } from "./config/env.js";
-import { createWhatsAppClient } from "./whatsapp/client.js";
+import { createWhatsAppClient, initializeWithRetry } from "./whatsapp/client.js";
 import { saveMedia } from "./media/storage.js";
 import { openQueue, enqueue } from "./queue/queue.js";
 import { runWorker, requestStop } from "./worker/worker.js";
@@ -65,7 +65,11 @@ async function main(): Promise<void> {
   process.on("SIGTERM", handleShutdown);
   process.on("SIGINT", handleShutdown);
 
-  await waClient.initialize();
+  await initializeWithRetry(waClient, logger, {
+    maxAttempts: 10,
+    baseDelayMs: 2000,
+    maxDelayMs: 120_000,
+  });
 
   const workerPromise = runWorker(waClient, { db, hotbagsConfig });
   logger.info("Gateway running");

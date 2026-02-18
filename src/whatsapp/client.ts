@@ -19,12 +19,76 @@ export interface WhatsAppClientConfig {
   instanceId: string;
 }
 
+export interface InitializeWithRetryOptions {
+  maxAttempts?: number;
+  baseDelayMs?: number;
+  maxDelayMs?: number;
+}
+
+const JITTER_MS = 500;
+
+function delayWithJitter(baseMs: number, maxMs: number): number {
+  const jitter = Math.random() * JITTER_MS;
+  return Math.floor(Math.min(maxMs, baseMs + jitter));
+}
+
+function isRetryableInitError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  const lower = msg.toLowerCase();
+  if (lower.includes("execution context was destroyed")) return true;
+  if (lower.includes("protocolerror") && lower.includes("timeout")) return true;
+  if (err instanceof Error && err.name === "ProtocolError" && lower.includes("timeout")) return true;
+  return false;
+}
+
+export async function initializeWithRetry(
+  client: ClientInstance,
+  log: typeof logger,
+  options: InitializeWithRetryOptions = {}
+): Promise<void> {
+  const { maxAttempts = 10, baseDelayMs = 2000, maxDelayMs = 120_000 } = options;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      log.info({ attempt, maxAttempts }, "WhatsApp client initialize attempt");
+      await client.initialize();
+      log.info("WhatsApp client ready");
+      return;
+    } catch (err) {
+      if (!isRetryableInitError(err)) {
+        throw err;
+      }
+      if (attempt === maxAttempts) {
+        throw err;
+      }
+      const delay = delayWithJitter(
+        Math.min(maxDelayMs, baseDelayMs * Math.pow(2, attempt - 1)),
+        maxDelayMs
+      );
+      log.warn(
+        { err, attempt, maxAttempts, delayMs: delay },
+        "WhatsApp initialize failed (retryable), retrying"
+      );
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+}
+
 export function createWhatsAppClient(config: WhatsAppClientConfig): ClientInstance {
   const authPath = path.join(config.dataDir, "wwebjs_auth");
-  const puppeteerOpts: { args: string[]; executablePath?: string } = {
-    args: ["--no-sandbox", "--disable-setuid-sandbox"],
-  };
   const execPath = process.env.PUPPETEER_EXECUTABLE_PATH;
+  const puppeteerOpts: {
+    args: string[];
+    executablePath?: string;
+    protocolTimeout?: number;
+  } = {
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+    ],
+    protocolTimeout: 120_000,
+  };
   if (execPath) {
     puppeteerOpts.executablePath = execPath;
   }
