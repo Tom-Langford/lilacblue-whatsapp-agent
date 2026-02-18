@@ -35,7 +35,7 @@ async function main(): Promise<void> {
     hmacSecret: config.HOTBAGS_HMAC_SECRET,
   };
 
-  waClient.on("message", async (msg) => {
+  waClient.on("message", async (msg: import("whatsapp-web.js").Message) => {
     if (msg.fromMe) return;
 
     const chatId = msg.from;

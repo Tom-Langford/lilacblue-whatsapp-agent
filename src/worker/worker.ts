@@ -2,7 +2,7 @@
  * Worker: poll queue, retry, idempotency, outbound sends.
  */
 
-import type { Client } from "whatsapp-web.js";
+import type { ClientInstance } from "../whatsapp/client.js";
 import type Database from "better-sqlite3";
 import {
   dequeue,
@@ -31,7 +31,7 @@ export function requestStop(): void {
 }
 
 export async function runWorker(
-  waClient: Client,
+  waClient: ClientInstance,
   config: WorkerConfig
 ): Promise<void> {
   const { db, hotbagsConfig } = config;
