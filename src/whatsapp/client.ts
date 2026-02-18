@@ -86,8 +86,11 @@ export function createWhatsAppClient(config: WhatsAppClientConfig): ClientInstan
       "--no-sandbox",
       "--disable-setuid-sandbox",
       "--disable-dev-shm-usage",
+      "--disable-gpu",
+      "--no-zygote",
+      "--single-process",
     ],
-    protocolTimeout: 120_000,
+    protocolTimeout: 180_000,
   };
   if (execPath) {
     puppeteerOpts.executablePath = execPath;
