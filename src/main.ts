@@ -38,28 +38,37 @@ async function main(): Promise<void> {
   waClient.on("message", async (msg: import("whatsapp-web.js").Message) => {
     if (msg.fromMe) return;
 
-    const chatId = msg.from;
     const messageId = msg.id._serialized ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const from = msg.from;
-    const timestamp = msg.timestamp ? msg.timestamp : Math.floor(Date.now() / 1000);
-    const text = msg.body ?? undefined;
+    logger.info(
+      { messageId, from: msg.from, hasMedia: msg.hasMedia, bodyPreview: msg.body?.slice(0, 80) },
+      "Inbound WhatsApp message"
+    );
 
-    let mediaStored: Awaited<ReturnType<typeof saveMedia>> = [];
-    if (msg.hasMedia) {
-      mediaStored = await saveMedia(messageId, msg, { dataDir: config.DATA_DIR });
+    try {
+      const chatId = msg.from;
+      const from = msg.from;
+      const timestamp = msg.timestamp ? msg.timestamp : Math.floor(Date.now() / 1000);
+      const text = msg.body ?? undefined;
+
+      let mediaStored: Awaited<ReturnType<typeof saveMedia>> = [];
+      if (msg.hasMedia) {
+        mediaStored = await saveMedia(messageId, msg, { dataDir: config.DATA_DIR });
+      }
+
+      const inboundRequest: InboundRequest = {
+        message_id: messageId,
+        chat_id: chatId,
+        from,
+        timestamp,
+        text,
+        media: mediaStored.length > 0 ? mediaStored.map(toMediaMetadata) : undefined,
+      };
+
+      enqueue(db, messageId, JSON.stringify(inboundRequest));
+      logger.debug({ messageId, chatId }, "Enqueued inbound message");
+    } catch (err) {
+      logger.error({ err, messageId }, "Error processing inbound WhatsApp message");
     }
-
-    const inboundRequest: InboundRequest = {
-      message_id: messageId,
-      chat_id: chatId,
-      from,
-      timestamp,
-      text,
-      media: mediaStored.length > 0 ? mediaStored.map(toMediaMetadata) : undefined,
-    };
-
-    enqueue(db, messageId, JSON.stringify(inboundRequest));
-    logger.debug({ messageId, chatId }, "Enqueued inbound message");
   });
 
   process.on("SIGTERM", handleShutdown);
