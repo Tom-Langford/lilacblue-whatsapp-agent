@@ -38,7 +38,7 @@ If bundled Chromium fails, install system Chromium and set `PUPPETEER_EXECUTABLE
    ```bash
    cp .env.example .env
    # Edit .env: HOTBAGS_INGEST_URL, HOTBAGS_BEARER_TOKEN, HOTBAGS_HMAC_SECRET,
-   # QUEUE_DB_PATH, DATA_DIR, GATEWAY_INSTANCE_ID
+   # QUEUE_DB_PATH, DATA_DIR, GATEWAY_INSTANCE_ID, ALLOWED_PHONE_NUMBERS
    ```
 
 3. **First run – link WhatsApp**
@@ -71,6 +71,7 @@ See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for VM deployment: `npm ci`, `/etc/
 | `QUEUE_DB_PATH` | Yes | Path to SQLite queue DB (e.g. `$DATA_DIR/queue.db`) |
 | `DATA_DIR` | Yes | Base for WhatsApp session + media |
 | `GATEWAY_INSTANCE_ID` | Yes | Unique instance identifier |
+| `ALLOWED_PHONE_NUMBERS` | Yes | Comma-separated phone numbers the bot will respond to (e.g. `+447584662710,+447887409934`). Group chats and other numbers are ignored. |
 | `PUPPETEER_EXECUTABLE_PATH` | No | System Chromium path (if bundled fails on minimal VM) |
 
 ## Production (systemd)

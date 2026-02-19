@@ -38,6 +38,19 @@ async function main(): Promise<void> {
   waClient.on("message", async (msg: import("whatsapp-web.js").Message) => {
     if (msg.fromMe) return;
 
+    // Ignore group chats entirely
+    if (msg.from.endsWith("@g.us")) {
+      logger.debug({ from: msg.from }, "Ignoring message from group chat");
+      return;
+    }
+
+    // Only process messages from allowed numbers (direct chats)
+    const senderNumber = msg.from.replace(/@c\.us$/, "").replace(/\D/g, "");
+    if (!config.ALLOWED_PHONE_NUMBERS.has(senderNumber)) {
+      logger.debug({ from: msg.from, senderNumber }, "Ignoring message from non-allowed number");
+      return;
+    }
+
     const messageId = msg.id._serialized ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     logger.info(
       { messageId, from: msg.from, hasMedia: msg.hasMedia, bodyPreview: msg.body?.slice(0, 80) },

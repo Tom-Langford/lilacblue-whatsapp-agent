@@ -57,6 +57,7 @@ HOTBAGS_HMAC_SECRET=<shared-secret-with-hot-bags>
 QUEUE_DB_PATH=/var/lib/clawdbot/queue.db
 DATA_DIR=/var/lib/clawdbot
 GATEWAY_INSTANCE_ID=clawdbot-1
+ALLOWED_PHONE_NUMBERS=+447584662710,+447887409934,+447748630646,+447557790428
 ```
 
 - `HOTBAGS_HMAC_SECRET`: Required for production. Use `HOTBAGS_HMAC_DISABLED=true` only for temporary Bearer-only mode (logs warning).

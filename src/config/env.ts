@@ -12,6 +12,15 @@ const hmacDisabledSchema = z
   .default("false")
   .transform((s) => s === "true" || s === "1");
 
+/** Normalize phone to digits only (e.g. +447584662710 -> 447584662710) */
+function parseAllowedNumbers(raw: string): Set<string> {
+  const numbers = raw
+    .split(/[,\s]+/)
+    .map((s) => s.replace(/\D/g, ""))
+    .filter((s) => s.length > 0);
+  return new Set(numbers);
+}
+
 const envSchema = z
   .object({
     HOTBAGS_INGEST_URL: z.string().url(),
@@ -21,6 +30,8 @@ const envSchema = z
     QUEUE_DB_PATH: z.string().min(1),
     DATA_DIR: z.string().min(1),
     GATEWAY_INSTANCE_ID: z.string().min(1),
+    /** Comma- or space-separated list of allowed phone numbers (e.g. 447584662710 or +447584662710) */
+    ALLOWED_PHONE_NUMBERS: z.string().min(1).transform(parseAllowedNumbers),
   })
   .refine(
     (data) => {
