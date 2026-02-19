@@ -75,33 +75,17 @@ export async function initializeWithRetry(
 }
 
 export function createWhatsAppClient(config: WhatsAppClientConfig): ClientInstance {
-  const authPath = path.join(config.dataDir, "wwebjs_auth");
-  const execPath = process.env.PUPPETEER_EXECUTABLE_PATH;
-  const puppeteerOpts: {
-    args: string[];
-    executablePath?: string;
-    protocolTimeout?: number;
-  } = {
-    args: [
-      "--no-sandbox",
-      "--disable-setuid-sandbox",
-      "--disable-dev-shm-usage",
-      "--disable-gpu",
-      "--no-zygote",
-      "--single-process",
-    ],
-    protocolTimeout: 180_000,
-  };
-  if (execPath) {
-    puppeteerOpts.executablePath = execPath;
-  }
-
   const client = new Client({
     authStrategy: new LocalAuth({
-      dataPath: authPath,
+      dataPath: path.join(config.dataDir, "wwebjs_auth"),
       clientId: config.instanceId,
     }),
-    puppeteer: puppeteerOpts,
+    puppeteer: {
+      headless: true,
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+    },
+    webCache: { type: "none" },
   });
 
   client.on("qr", (qr: string) => {
