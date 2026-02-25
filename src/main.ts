@@ -45,7 +45,21 @@ async function main(): Promise<void> {
     }
 
     // Only process messages from allowed numbers (direct chats)
-    const senderNumber = msg.from.replace(/@c\.us$/, "").replace(/\D/g, "");
+    let senderNumber: string;
+    if (msg.from.endsWith("@lid")) {
+      // WhatsApp uses @lid (Linked ID) for some direct chats - resolve to phone number via Client API
+      try {
+        const lid = msg.from.replace(/@lid$/, "");
+        const results = await waClient.getContactLidAndPhone([lid]);
+        const pn = results[0]?.pn ?? "";
+        senderNumber = pn.replace(/@c\.us$/, "").replace(/\D/g, "");
+      } catch (err) {
+        logger.warn({ err, from: msg.from }, "Could not resolve LID to phone number");
+        return;
+      }
+    } else {
+      senderNumber = msg.from.replace(/@c\.us$/, "").replace(/\D/g, "");
+    }
     if (!config.ALLOWED_PHONE_NUMBERS.has(senderNumber)) {
       logger.debug({ from: msg.from, senderNumber }, "Ignoring message from non-allowed number");
       return;
@@ -84,6 +98,15 @@ async function main(): Promise<void> {
     }
   });
 
+  let workerPromise: Promise<void> = Promise.resolve();
+
+  async function handleShutdown() {
+    logger.info("Shutting down...");
+    requestStop();
+    await workerPromise;
+    process.exit(0);
+  }
+
   process.on("SIGTERM", handleShutdown);
   process.on("SIGINT", handleShutdown);
 
@@ -93,15 +116,8 @@ async function main(): Promise<void> {
     maxDelayMs: 120_000,
   });
 
-  const workerPromise = runWorker(waClient, { db, hotbagsConfig });
+  workerPromise = runWorker(waClient, { db, hotbagsConfig });
   logger.info("Gateway running");
-
-  async function handleShutdown() {
-    logger.info("Shutting down...");
-    requestStop();
-    await workerPromise;
-    process.exit(0);
-  }
 }
 
 main().catch((err) => {
