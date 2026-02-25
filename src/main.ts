@@ -47,7 +47,7 @@ async function main(): Promise<void> {
     // Only process messages from allowed numbers (direct chats)
     let senderNumber: string;
     if (msg.from.endsWith("@lid")) {
-      // WhatsApp uses @lid (Linked ID) for some direct chats - resolve to phone number via Client API
+      // WhatsApp uses @lid for some direct chats - resolve to phone number
       try {
         const lid = msg.from.replace(/@lid$/, "");
         const results = await waClient.getContactLidAndPhone([lid]);
