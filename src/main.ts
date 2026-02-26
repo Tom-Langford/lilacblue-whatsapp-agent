@@ -49,10 +49,10 @@ async function main(): Promise<void> {
     if (msg.from.endsWith("@lid")) {
       // WhatsApp uses @lid for some direct chats - resolve to phone number
       try {
-        const lid = msg.from.replace(/@lid$/, "");
-        const results = await waClient.getContactLidAndPhone([lid]);
+        const results = await waClient.getContactLidAndPhone([msg.from]);
         const pn = results[0]?.pn ?? "";
         senderNumber = pn.replace(/@c\.us$/, "").replace(/\D/g, "");
+        logger.debug({ from: msg.from, pn, senderNumber }, "LID resolved to phone");
       } catch (err) {
         logger.warn({ err, from: msg.from }, "Could not resolve LID to phone number");
         return;
