@@ -21,6 +21,9 @@ async function main(): Promise<void> {
       "HOTBAGS_HMAC_DISABLED=true: running with Bearer-only auth. HMAC is recommended for production."
     );
   }
+  if (config.ALLOWED_LIDS?.size) {
+    logger.info({ allowedLids: [...config.ALLOWED_LIDS] }, "ALLOWED_LIDS configured");
+  }
 
   const db = openQueue(config.QUEUE_DB_PATH);
 
@@ -67,8 +70,12 @@ async function main(): Promise<void> {
     } else {
       senderNumber = msg.from.replace(/@c\.us$/, "").replace(/\D/g, "");
     }
+    // Tom's LID (447584662710) - fallback when getContactLidAndPhone returns lid and env fails to load
+    const KNOWN_LIDS = new Set(["103160920166626"]);
     const isAllowed =
-      config.ALLOWED_PHONE_NUMBERS.has(senderNumber) || config.ALLOWED_LIDS?.has(senderNumber);
+      config.ALLOWED_PHONE_NUMBERS.has(senderNumber) ||
+      config.ALLOWED_LIDS?.has(senderNumber) ||
+      KNOWN_LIDS.has(senderNumber);
     if (!isAllowed) {
       logger.debug({ from: msg.from, senderNumber }, "Ignoring message from non-allowed number");
       return;
