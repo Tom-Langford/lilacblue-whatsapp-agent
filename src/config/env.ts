@@ -21,6 +21,11 @@ function parseAllowedNumbers(raw: string): Set<string> {
   return new Set(numbers);
 }
 
+function parseAllowedLids(raw: string | undefined): Set<string> {
+  if (!raw?.trim()) return new Set();
+  return new Set(raw.split(/[,\s]+/).map((s) => s.trim()).filter(Boolean));
+}
+
 const envSchema = z
   .object({
     HOTBAGS_INGEST_URL: z.string().url(),
@@ -32,6 +37,8 @@ const envSchema = z
     GATEWAY_INSTANCE_ID: z.string().min(1),
     /** Comma- or space-separated list of allowed phone numbers (e.g. 447584662710 or +447584662710) */
     ALLOWED_PHONE_NUMBERS: z.string().min(1).transform(parseAllowedNumbers),
+    /** Optional: LIDs to allow when getContactLidAndPhone fails (e.g. 103160920166626 for Tom) */
+    ALLOWED_LIDS: z.string().optional().transform(parseAllowedLids),
   })
   .refine(
     (data) => {

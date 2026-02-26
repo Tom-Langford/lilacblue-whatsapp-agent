@@ -47,20 +47,29 @@ async function main(): Promise<void> {
     // Only process messages from allowed numbers (direct chats)
     let senderNumber: string;
     if (msg.from.endsWith("@lid")) {
-      // WhatsApp uses @lid for some direct chats - resolve to phone number
+      const lid = msg.from.replace(/@lid$/, "");
+      // Try getContactLidAndPhone first; fall back to ALLOWED_LIDS when it returns lid instead of phone
       try {
         const results = await waClient.getContactLidAndPhone([msg.from]);
         const pn = results[0]?.pn ?? "";
         senderNumber = pn.replace(/@c\.us$/, "").replace(/\D/g, "");
-        logger.debug({ from: msg.from, pn, senderNumber }, "LID resolved to phone");
-      } catch (err) {
-        logger.warn({ err, from: msg.from }, "Could not resolve LID to phone number");
-        return;
+        if (!config.ALLOWED_PHONE_NUMBERS.has(senderNumber) && config.ALLOWED_LIDS?.has(lid)) {
+          senderNumber = lid; // allow by LID
+        }
+      } catch {
+        if (config.ALLOWED_LIDS?.has(lid)) {
+          senderNumber = lid;
+        } else {
+          logger.warn({ from: msg.from }, "Could not resolve LID to phone number");
+          return;
+        }
       }
     } else {
       senderNumber = msg.from.replace(/@c\.us$/, "").replace(/\D/g, "");
     }
-    if (!config.ALLOWED_PHONE_NUMBERS.has(senderNumber)) {
+    const isAllowed =
+      config.ALLOWED_PHONE_NUMBERS.has(senderNumber) || config.ALLOWED_LIDS?.has(senderNumber);
+    if (!isAllowed) {
       logger.debug({ from: msg.from, senderNumber }, "Ignoring message from non-allowed number");
       return;
     }
