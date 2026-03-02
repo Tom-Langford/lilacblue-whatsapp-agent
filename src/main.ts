@@ -38,6 +38,11 @@ async function main(): Promise<void> {
     hmacSecret: config.HOTBAGS_HMAC_SECRET,
   };
 
+  const supabaseConfig =
+    config.SUPABASE_URL && config.SUPABASE_SERVICE_ROLE_KEY
+      ? { url: config.SUPABASE_URL, serviceRoleKey: config.SUPABASE_SERVICE_ROLE_KEY }
+      : undefined;
+
   waClient.on("message", async (msg: import("whatsapp-web.js").Message) => {
     if (msg.fromMe) return;
 
@@ -95,7 +100,11 @@ async function main(): Promise<void> {
 
       let mediaStored: Awaited<ReturnType<typeof saveMedia>> = [];
       if (msg.hasMedia) {
-        mediaStored = await saveMedia(messageId, msg, { dataDir: config.DATA_DIR });
+        mediaStored = await saveMedia(messageId, msg, {
+          dataDir: config.DATA_DIR,
+          from: msg.from,
+          supabase: supabaseConfig,
+        });
       }
 
       const inboundRequest: InboundRequest = {

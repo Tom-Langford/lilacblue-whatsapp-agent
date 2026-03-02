@@ -39,6 +39,9 @@ const envSchema = z
     ALLOWED_PHONE_NUMBERS: z.string().min(1).transform(parseAllowedNumbers),
     /** Optional: LIDs to allow when getContactLidAndPhone fails (e.g. 103160920166626 for Tom) */
     ALLOWED_LIDS: z.string().optional().transform(parseAllowedLids),
+    /** Optional: Supabase config for uploading media and generating signed URLs */
+    SUPABASE_URL: z.string().url().optional(),
+    SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).optional(),
   })
   .refine(
     (data) => {

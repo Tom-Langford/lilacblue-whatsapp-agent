@@ -19,6 +19,7 @@ export interface MediaStored {
   size?: number;
   sha256?: string;
   local_path: string;
+  url?: string;
 }
 
 /** For Hot Bags: metadata only, no local_path */
@@ -27,6 +28,7 @@ export interface MediaMetadata {
   filename?: string;
   size?: number;
   sha256?: string;
+  url?: string;
 }
 
 /** Queue row shape */
@@ -79,5 +81,6 @@ export function toMediaMetadata(stored: MediaStored): MediaMetadata {
     filename: stored.filename,
     size: stored.size,
     sha256: stored.sha256,
+    url: stored.url,
   };
 }

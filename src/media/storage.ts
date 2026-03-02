@@ -1,5 +1,6 @@
 /**
  * Save media to disk, compute hash, return metadata.
+ * Optionally upload to Supabase Storage and attach a signed URL.
  * Gateway uses local_path internally; Hot Bags gets MediaMetadata only.
  */
 
@@ -7,10 +8,18 @@ import fs from "fs/promises";
 import path from "path";
 import { sha256Hex } from "../lib/hash.js";
 import { logger } from "../lib/logger.js";
+import { uploadMediaToSupabaseAndSign } from "./supabase.js";
 import type { MediaStored } from "../types/index.js";
+
+export interface SupabaseUploadConfig {
+  url: string;
+  serviceRoleKey: string;
+}
 
 export interface SaveMediaOptions {
   dataDir: string;
+  from: string;
+  supabase?: SupabaseUploadConfig;
 }
 
 export async function saveMedia(
@@ -44,5 +53,29 @@ export async function saveMedia(
   };
 
   logger.debug({ messageId, localPath, mime: media.mimetype }, "Saved media");
+
+  if (options.supabase) {
+    try {
+      const signedUrl = await uploadMediaToSupabaseAndSign(
+        buffer,
+        {
+          from: options.from.replace(/@c\.us$/, ""),
+          messageId,
+          mime: media.mimetype,
+          filename: media.filename ?? undefined,
+        },
+        { ...options.supabase, bucket: "hot-bags-originals" }
+      );
+      if (signedUrl) {
+        result.url = signedUrl;
+        logger.debug({ messageId }, "Supabase upload succeeded");
+      } else {
+        logger.warn({ messageId }, "Supabase upload returned no signed URL");
+      }
+    } catch (err) {
+      logger.warn({ messageId, error: err instanceof Error ? err.message : String(err) }, "Supabase upload failed");
+    }
+  }
+
   return [result];
 }
