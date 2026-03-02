@@ -1,16 +1,15 @@
 /**
  * WhatsApp Web client - transport only.
  * Connect, receive events, send text/media.
- * Uses createRequire for ESM/CJS interop (whatsapp-web.js is CommonJS).
+ * whatsapp-web.js is CommonJS; ESM must use default import then destructure.
  */
 
-import { createRequire } from "module";
 import path from "path";
 import qrcode from "qrcode-terminal";
+import pkg from "whatsapp-web.js";
 import { logger } from "../lib/logger.js";
 
-const require = createRequire(import.meta.url);
-const { Client, LocalAuth, MessageMedia } = require("whatsapp-web.js");
+const { Client, LocalAuth, MessageMedia } = pkg;
 
 export type ClientInstance = InstanceType<typeof Client>;
 
@@ -75,7 +74,7 @@ export async function initializeWithRetry(
 }
 
 export function createWhatsAppClient(config: WhatsAppClientConfig): ClientInstance {
-  const client = new Client({
+  const clientOptions = {
     authStrategy: new LocalAuth({
       dataPath: path.join(config.dataDir, "wwebjs_auth"),
       clientId: config.instanceId,
@@ -85,8 +84,9 @@ export function createWhatsAppClient(config: WhatsAppClientConfig): ClientInstan
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
       executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
     },
-    webCache: { type: "none" },
-  });
+    webCache: { type: "none" as const },
+  };
+  const client = new Client(clientOptions as ConstructorParameters<typeof Client>[0]);
 
   client.on("qr", (qr: string) => {
     logger.info("Scan QR with WhatsApp to authenticate");
