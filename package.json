@@ -13,17 +13,19 @@
     "gateway": "tsx src/main.ts"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.98.0",
     "better-sqlite3": "^11.6.0",
-    "qrcode-terminal": "^0.12.0",
     "pino": "^9.5.0",
     "pino-pretty": "^11.3.0",
-    "whatsapp-web.js": "^1.26.0",
+    "puppeteer-core": "21.11.0",
+    "qrcode-terminal": "^0.12.0",
+    "whatsapp-web.js": "^1.34.6",
     "zod": "^3.23.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.11",
-    "@types/qrcode-terminal": "^0.12.0",
     "@types/node": "^22",
+    "@types/qrcode-terminal": "^0.12.0",
     "tsx": "^4.19.2",
     "typescript": "^5"
   }

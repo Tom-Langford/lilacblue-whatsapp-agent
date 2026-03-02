@@ -6,3 +6,7 @@ auth/
 *.db
 retry-queue/
 *.log
+.wwebjs_cache/
+.wwebjs_auth/
+/var/lib/clawdbot/
+puppeteer-test.js
