@@ -11,6 +11,10 @@ import { logger } from "../lib/logger.js";
 import { uploadMediaToSupabaseAndSign } from "./supabase.js";
 import type { MediaStored } from "../types/index.js";
 
+/** Gateway uploads only to originals. hot-bags-processed is for Hot Bags AI output only. */
+const SUPABASE_BUCKET = "hot-bags-originals";
+const UPLOAD_TIMEOUT_MS = 15_000;
+
 export interface SupabaseUploadConfig {
   url: string;
   serviceRoleKey: string;
@@ -56,16 +60,20 @@ export async function saveMedia(
 
   if (options.supabase) {
     try {
-      const signedUrl = await uploadMediaToSupabaseAndSign(
+      const uploadPromise = uploadMediaToSupabaseAndSign(
         buffer,
         {
-          from: options.from.replace(/@c\.us$/, ""),
+          from: options.from,
           messageId,
           mime: media.mimetype,
           filename: media.filename ?? undefined,
         },
-        { ...options.supabase, bucket: "hot-bags-originals" }
+        { ...options.supabase, bucket: SUPABASE_BUCKET }
       );
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Supabase upload timed out")), UPLOAD_TIMEOUT_MS)
+      );
+      const signedUrl = await Promise.race([uploadPromise, timeoutPromise]);
       if (signedUrl) {
         result.url = signedUrl;
         logger.debug({ messageId }, "Supabase upload succeeded");

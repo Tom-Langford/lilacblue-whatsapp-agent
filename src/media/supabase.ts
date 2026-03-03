@@ -12,9 +12,22 @@ function extFromMime(mime: string) {
   if (m.includes("webp")) return "webp";
   if (m.includes("pdf")) return "pdf";
   if (m.includes("heic")) return "heic";
-  // default to jpg-ish for images if unknown
   if (m.startsWith("image/")) return "jpg";
   return "bin";
+}
+
+/** Strip @lid, @c.us, and any WhatsApp suffix from sender ID */
+function cleanSenderId(from: string): string {
+  const at = from.indexOf("@");
+  return at >= 0 ? from.slice(0, at) : from;
+}
+
+/** Extract hex/alphanumeric message ID from WhatsApp compound ID (e.g. false_123_lid_3B888111D651EDE6E936 -> 3B888111D651EDE6E936) */
+function cleanMessageId(messageId: string): string {
+  const parts = messageId.split("_");
+  const last = parts[parts.length - 1];
+  if (last && /^[A-Za-z0-9]+$/.test(last) && last.length >= 8) return last;
+  return messageId.replace(/[^A-Za-z0-9]/g, "_");
 }
 
 export async function uploadMediaToSupabaseAndSign(
@@ -27,11 +40,10 @@ export async function uploadMediaToSupabaseAndSign(
   });
 
   const ext = extFromMime(opts.mime);
-  const safeFrom = opts.from.replace(/[^a-zA-Z0-9@._-]/g, "_");
-  const safeName = (opts.filename ?? `media_${opts.messageId}.${ext}`).replace(/[^a-zA-Z0-9._-]/g, "_");
+  const cleanFrom = cleanSenderId(opts.from).replace(/[^a-zA-Z0-9._-]/g, "_");
+  const cleanId = cleanMessageId(opts.messageId);
 
-  // Organize by sender + messageId to avoid collisions
-  const objectPath = `${safeFrom}/${opts.messageId}/${safeName}`;
+  const objectPath = `${cleanFrom}/${cleanId}.${ext}`;
 
   const { error: upErr } = await supabase.storage
     .from(cfg.bucket)
