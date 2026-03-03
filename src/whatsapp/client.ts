@@ -132,3 +132,22 @@ export async function sendMedia(
   const media = MessageMedia.fromFilePath(localPath);
   await client.sendMessage(chatId, media, { caption: caption ?? "" });
 }
+
+function mimeFromUrl(url: string): string {
+  const u = url.toLowerCase();
+  if (u.includes(".jpg") || u.includes(".jpeg")) return "image/jpeg";
+  if (u.includes(".png")) return "image/png";
+  if (u.includes(".gif")) return "image/gif";
+  if (u.includes(".webp")) return "image/webp";
+  return "image/png";
+}
+
+export async function sendImage(client: ClientInstance, chatId: string, url: string): Promise<void> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Image fetch failed (${res.status}): ${url}`);
+  const buffer = Buffer.from(await res.arrayBuffer());
+  const base64 = buffer.toString("base64");
+  const mime = mimeFromUrl(url);
+  const media = new MessageMedia(mime, base64);
+  await client.sendMessage(chatId, media);
+}

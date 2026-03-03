@@ -14,7 +14,7 @@ import {
 } from "../queue/queue.js";
 import { postInbound } from "../hotbags/client.js";
 import type { HotBagsClientConfig } from "../hotbags/client.js";
-import { sendText } from "../whatsapp/client.js";
+import { sendText, sendImage } from "../whatsapp/client.js";
 import { calculate as backoff } from "../lib/backoff.js";
 import { logger } from "../lib/logger.js";
 import type { InboundRequest, InboundResponse } from "../types/index.js";
@@ -70,32 +70,40 @@ export async function runWorker(
       const chatId = payload.chat_id;
       const messageId = job.message_id;
 
-      // Execute outbound sends (idempotent by command_id)
+      // Execute outbound sends (idempotent by command_id), in order
       let outboundFailed = false;
       for (const command of response.commands) {
-        if (command.type !== "send_text") continue;
-
-        if (wasOutboundSent(db, messageId, command.command_id)) {
-          continue;
-        }
-
-        try {
-          await sendText(waClient, chatId, command.text);
-          markOutboundSent(db, messageId, command.command_id);
-        } catch (err) {
-          logger.warn(
-            { err, message_id: messageId, command_id: command.command_id },
-            "Outbound send failed, will retry"
-          );
-          queueRetry(
-            db,
-            job.id,
-            backoff(job.attempt_count),
-            messageId,
-            JSON.stringify(response)
-          );
-          outboundFailed = true;
-          break;
+        if (command.type === "send_text") {
+          if (wasOutboundSent(db, messageId, command.command_id)) continue;
+          try {
+            await sendText(waClient, chatId, command.text);
+            markOutboundSent(db, messageId, command.command_id);
+          } catch (err) {
+            logger.warn(
+              { err, message_id: messageId, command_id: command.command_id },
+              "Outbound send_text failed, will retry"
+            );
+            queueRetry(
+              db,
+              job.id,
+              backoff(job.attempt_count),
+              messageId,
+              JSON.stringify(response)
+            );
+            outboundFailed = true;
+            break;
+          }
+        } else if (command.type === "send_image") {
+          if (wasOutboundSent(db, messageId, command.command_id)) continue;
+          try {
+            await sendImage(waClient, chatId, command.url);
+            markOutboundSent(db, messageId, command.command_id);
+          } catch (err) {
+            logger.warn(
+              { err, message_id: messageId, command_id: command.command_id, url: command.url },
+              "send_image failed, skipping to next command"
+            );
+          }
         }
       }
 

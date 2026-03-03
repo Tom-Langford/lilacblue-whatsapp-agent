@@ -65,11 +65,10 @@ export interface InboundRequest {
 /** JSON contract from Hot Bags */
 export interface InboundResponse {
   ok: boolean;
-  commands?: Array<{
-    command_id: string;
-    type: "send_text";
-    text: string;
-  }>;
+  commands?: Array<
+    | { command_id: string; type: "send_text"; text: string }
+    | { command_id: string; type: "send_image"; url: string }
+  >;
   error?: string;
   issues?: unknown[];
 }
