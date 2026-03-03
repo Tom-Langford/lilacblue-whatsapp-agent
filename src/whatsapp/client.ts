@@ -37,28 +37,39 @@ function isRetryableInitError(err: unknown): boolean {
   if (lower.includes("execution context was destroyed")) return true;
   if (lower.includes("protocolerror") && lower.includes("timeout")) return true;
   if (err instanceof Error && err.name === "ProtocolError" && lower.includes("timeout")) return true;
+  if (lower.includes("the browser is already running")) return true;
+  if (lower.includes("network.getresponsebody timed out")) return true;
+  if (lower.includes("timed out after") && lower.includes("while waiting")) return true;
   return false;
 }
 
+export type CreateClientFn = () => ClientInstance;
+
 export async function initializeWithRetry(
-  client: ClientInstance,
+  createClient: CreateClientFn,
   log: typeof logger,
   options: InitializeWithRetryOptions = {}
-): Promise<void> {
+): Promise<ClientInstance> {
   const { maxAttempts = 10, baseDelayMs = 2000, maxDelayMs = 120_000 } = options;
+  let client = createClient();
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       log.info({ attempt, maxAttempts }, "WhatsApp client initialize attempt");
       await client.initialize();
       log.info("WhatsApp client ready");
-      return;
+      return client;
     } catch (err) {
       if (!isRetryableInitError(err)) {
         throw err;
       }
       if (attempt === maxAttempts) {
         throw err;
+      }
+      try {
+        await client.destroy();
+      } catch {
+        /* best-effort cleanup of orphaned Chrome */
       }
       const delay = delayWithJitter(
         Math.min(maxDelayMs, baseDelayMs * Math.pow(2, attempt - 1)),
@@ -69,8 +80,10 @@ export async function initializeWithRetry(
         "WhatsApp initialize failed (retryable), retrying"
       );
       await new Promise((resolve) => setTimeout(resolve, delay));
+      client = createClient();
     }
   }
+  throw new Error("initializeWithRetry: unreachable");
 }
 
 export function createWhatsAppClient(config: WhatsAppClientConfig): ClientInstance {
@@ -83,6 +96,7 @@ export function createWhatsAppClient(config: WhatsAppClientConfig): ClientInstan
       headless: true,
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
       executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+      protocolTimeout: 300_000, // 5 min for resource-constrained VMs (Runtime.callFunctionOn, Network.getResponseBody)
     },
     webCache: { type: "none" as const },
   };

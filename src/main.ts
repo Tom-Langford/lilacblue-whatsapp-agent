@@ -27,10 +27,11 @@ async function main(): Promise<void> {
 
   const db = openQueue(config.QUEUE_DB_PATH);
 
-  const waClient = createWhatsAppClient({
-    dataDir: config.DATA_DIR,
-    instanceId: config.GATEWAY_INSTANCE_ID,
-  });
+  const createClient = () =>
+    createWhatsAppClient({
+      dataDir: config.DATA_DIR,
+      instanceId: config.GATEWAY_INSTANCE_ID,
+    });
 
   const hotbagsConfig = {
     ingestUrl: config.HOTBAGS_INGEST_URL,
@@ -42,6 +43,12 @@ async function main(): Promise<void> {
     config.SUPABASE_URL && config.SUPABASE_SERVICE_ROLE_KEY
       ? { url: config.SUPABASE_URL, serviceRoleKey: config.SUPABASE_SERVICE_ROLE_KEY }
       : undefined;
+
+  const waClient = await initializeWithRetry(createClient, logger, {
+    maxAttempts: 10,
+    baseDelayMs: 2000,
+    maxDelayMs: 120_000,
+  });
 
   waClient.on("message", async (msg: import("whatsapp-web.js").Message) => {
     if (msg.fromMe) return;
@@ -134,12 +141,6 @@ async function main(): Promise<void> {
 
   process.on("SIGTERM", handleShutdown);
   process.on("SIGINT", handleShutdown);
-
-  await initializeWithRetry(waClient, logger, {
-    maxAttempts: 10,
-    baseDelayMs: 2000,
-    maxDelayMs: 120_000,
-  });
 
   workerPromise = runWorker(waClient, { db, hotbagsConfig });
   logger.info("Gateway running");
