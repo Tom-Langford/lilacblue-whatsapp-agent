@@ -4,7 +4,9 @@
  * whatsapp-web.js is CommonJS; ESM must use default import then destructure.
  */
 
+import fs from "fs";
 import path from "path";
+import QRCode from "qrcode";
 import qrcode from "qrcode-terminal";
 import pkg from "whatsapp-web.js";
 import { logger } from "../lib/logger.js";
@@ -94,7 +96,11 @@ export function createWhatsAppClient(config: WhatsAppClientConfig): ClientInstan
     }),
     puppeteer: {
       headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage", // required on low-RAM VMs: /dev/shm is only 64MB, Chrome crashes without this
+      ],
       executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
       protocolTimeout: 300_000, // 5 min for resource-constrained VMs (Runtime.callFunctionOn, Network.getResponseBody)
     },
@@ -102,9 +108,19 @@ export function createWhatsAppClient(config: WhatsAppClientConfig): ClientInstan
   };
   const client = new Client(clientOptions as ConstructorParameters<typeof Client>[0]);
 
-  client.on("qr", (qr: string) => {
+  client.on("qr", async (qr: string) => {
     logger.info("Scan QR with WhatsApp to authenticate");
+    // Terminal output (may be corrupted by journalctl line-wrapping — use the PNG instead)
     qrcode.generate(qr, { small: true });
+
+    // Write QR as PNG to DATA_DIR so it can be reliably SCP'd and scanned
+    const qrPath = path.join(config.dataDir, "qr-latest.png");
+    try {
+      await QRCode.toFile(qrPath, qr, { type: "png", width: 400, margin: 2 });
+      logger.info({ qrPath }, "QR code saved — run on your Mac: scp lilacblue-gateway:" + qrPath + " ~/Desktop/qr.png && open ~/Desktop/qr.png");
+    } catch (err) {
+      logger.warn({ err }, "Failed to write QR PNG (terminal QR still shown above)");
+    }
   });
 
   client.on("ready", () => {
