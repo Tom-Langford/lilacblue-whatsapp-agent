@@ -113,11 +113,11 @@ export function createWhatsAppClient(config: WhatsAppClientConfig): ClientInstan
     // Terminal output (may be corrupted by journalctl line-wrapping — use the PNG instead)
     qrcode.generate(qr, { small: true });
 
-    // Write QR as PNG to DATA_DIR so it can be reliably SCP'd and scanned
-    const qrPath = path.join(config.dataDir, "qr-latest.png");
+    // Write QR as PNG to /tmp (world-readable, so any SSH user can scp it)
+    const qrPath = "/tmp/qr-latest.png";
     try {
       await QRCode.toFile(qrPath, qr, { type: "png", width: 400, margin: 2 });
-      logger.info({ qrPath }, "QR code saved — run on your Mac: scp lilacblue-gateway:" + qrPath + " ~/Desktop/qr.png && open ~/Desktop/qr.png");
+      logger.info({ qrPath }, "QR code saved — run on your Mac: scp lilacblue-gateway:/tmp/qr-latest.png ~/Desktop/qr.png && open ~/Desktop/qr.png");
     } catch (err) {
       logger.warn({ err }, "Failed to write QR PNG (terminal QR still shown above)");
     }
