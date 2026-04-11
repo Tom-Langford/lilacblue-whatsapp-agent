@@ -90,7 +90,7 @@ export async function initializeWithRetry(
 }
 
 export function createWhatsAppClient(config: WhatsAppClientConfig): ClientInstance {
-  const clientOptions = {
+  const clientOptions: Record<string, unknown> = {
     authStrategy: new LocalAuth({
       dataPath: path.join(config.dataDir, "wwebjs_auth"),
       clientId: config.instanceId,
@@ -107,30 +107,24 @@ export function createWhatsAppClient(config: WhatsAppClientConfig): ClientInstan
     },
     webCache: { type: "none" as const },
   };
+
+  // Phone-number pairing: pass config to constructor so it uses pairing code instead of QR
+  if (config.pairingPhoneNumber) {
+    clientOptions.pairWithPhoneNumber = {
+      phoneNumber: config.pairingPhoneNumber,
+      showNotification: true,
+    };
+  }
+
   const client = new Client(clientOptions as ConstructorParameters<typeof Client>[0]);
 
-  // Phone-number pairing: request a pairing code instead of showing a QR
+  // Listen for pairing code (emitted when pairWithPhoneNumber is configured)
   if (config.pairingPhoneNumber) {
-    const phoneNumber = config.pairingPhoneNumber;
-    client.on("qr", async () => {
-      try {
-        const code = await client.requestPairingCode(phoneNumber);
-        logger.info(
-          { code },
-          `╔══════════════════════════════════════╗`
-        );
-        logger.info(
-          { code },
-          `║  PAIRING CODE: ${code}               ║`
-        );
-        logger.info(
-          { code },
-          `╚══════════════════════════════════════╝`
-        );
-        logger.info("Enter this code on your phone: WhatsApp → Linked Devices → Link a Device → Link with phone number");
-      } catch (err) {
-        logger.error({ err }, "Failed to request pairing code");
-      }
+    client.on("code", (code: string) => {
+      logger.info("════════════════════════════════════════");
+      logger.info(`  PAIRING CODE: ${code}`);
+      logger.info("════════════════════════════════════════");
+      logger.info("Enter this code on your phone: WhatsApp → Linked Devices → Link a Device → Link with phone number");
     });
   } else {
     client.on("qr", async (qr: string) => {
