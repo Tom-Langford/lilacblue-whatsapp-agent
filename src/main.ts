@@ -31,6 +31,7 @@ async function main(): Promise<void> {
     createWhatsAppClient({
       dataDir: config.DATA_DIR,
       instanceId: config.GATEWAY_INSTANCE_ID,
+      pairingPhoneNumber: config.PAIRING_PHONE_NUMBER,
     });
 
   const hotbagsConfig = {

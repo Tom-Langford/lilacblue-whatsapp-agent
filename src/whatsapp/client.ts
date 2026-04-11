@@ -18,6 +18,7 @@ export type ClientInstance = InstanceType<typeof Client>;
 export interface WhatsAppClientConfig {
   dataDir: string;
   instanceId: string;
+  pairingPhoneNumber?: string;
 }
 
 export interface InitializeWithRetryOptions {
@@ -108,20 +109,43 @@ export function createWhatsAppClient(config: WhatsAppClientConfig): ClientInstan
   };
   const client = new Client(clientOptions as ConstructorParameters<typeof Client>[0]);
 
-  client.on("qr", async (qr: string) => {
-    logger.info("Scan QR with WhatsApp to authenticate");
-    // Terminal output (may be corrupted by journalctl line-wrapping — use the PNG instead)
-    qrcode.generate(qr, { small: true });
+  // Phone-number pairing: request a pairing code instead of showing a QR
+  if (config.pairingPhoneNumber) {
+    const phoneNumber = config.pairingPhoneNumber;
+    client.on("qr", async () => {
+      try {
+        const code = await client.requestPairingCode(phoneNumber);
+        logger.info(
+          { code },
+          `╔══════════════════════════════════════╗`
+        );
+        logger.info(
+          { code },
+          `║  PAIRING CODE: ${code}               ║`
+        );
+        logger.info(
+          { code },
+          `╚══════════════════════════════════════╝`
+        );
+        logger.info("Enter this code on your phone: WhatsApp → Linked Devices → Link a Device → Link with phone number");
+      } catch (err) {
+        logger.error({ err }, "Failed to request pairing code");
+      }
+    });
+  } else {
+    client.on("qr", async (qr: string) => {
+      logger.info("Scan QR with WhatsApp to authenticate");
+      qrcode.generate(qr, { small: true });
 
-    // Write QR as PNG to /tmp (world-readable, so any SSH user can scp it)
-    const qrPath = "/tmp/qr-latest.png";
-    try {
-      await QRCode.toFile(qrPath, qr, { type: "png", width: 400, margin: 2 });
-      logger.info({ qrPath }, "QR code saved — run on your Mac: scp lilacblue-gateway:/tmp/qr-latest.png ~/Desktop/qr.png && open ~/Desktop/qr.png");
-    } catch (err) {
-      logger.warn({ err }, "Failed to write QR PNG (terminal QR still shown above)");
-    }
-  });
+      const qrPath = "/tmp/qr-latest.png";
+      try {
+        await QRCode.toFile(qrPath, qr, { type: "png", width: 400, margin: 2 });
+        logger.info({ qrPath }, "QR code saved — run on your Mac: scp lilacblue-gateway:/tmp/qr-latest.png ~/Desktop/qr.png && open ~/Desktop/qr.png");
+      } catch (err) {
+        logger.warn({ err }, "Failed to write QR PNG (terminal QR still shown above)");
+      }
+    });
+  }
 
   client.on("ready", () => {
     logger.info("WhatsApp client ready");
