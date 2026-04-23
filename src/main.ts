@@ -147,6 +147,12 @@ async function main(): Promise<void> {
   logger.info("Gateway running");
 }
 
+// Catch unhandled promise rejections from whatsapp-web.js internals (e.g. "auth timeout")
+process.on("unhandledRejection", (reason) => {
+  logger.error({ reason }, "Unhandled promise rejection — systemd will restart");
+  process.exit(1);
+});
+
 main().catch((err) => {
   logger.error({ err }, "Fatal error");
   process.exit(1);

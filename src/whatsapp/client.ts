@@ -149,8 +149,13 @@ export function createWhatsAppClient(config: WhatsAppClientConfig): ClientInstan
     logger.info("WhatsApp client ready");
   });
 
+  client.on("disconnected", (reason: string) => {
+    logger.warn({ reason }, "WhatsApp client disconnected — systemd will restart");
+    process.exit(1);
+  });
+
   client.on("auth_failure", (msg: string) => {
-    logger.error({ msg }, "WhatsApp auth failure");
+    logger.error({ msg }, "WhatsApp auth failure — systemd will restart");
     process.exit(1);
   });
 
