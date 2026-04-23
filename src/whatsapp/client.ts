@@ -101,8 +101,12 @@ export function createWhatsAppClient(config: WhatsAppClientConfig): ClientInstan
         "--no-sandbox",
         "--disable-setuid-sandbox",
         "--disable-dev-shm-usage", // required on low-RAM VMs: /dev/shm is only 64MB, Chrome crashes without this
+        "--disable-gpu",
+        "--no-first-run",
+        "--no-default-browser-check",
       ],
       executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+      timeout: 120_000,      // 2 min for Chrome to launch on slow VMs (default is 30s)
       protocolTimeout: 300_000, // 5 min for resource-constrained VMs (Runtime.callFunctionOn, Network.getResponseBody)
     },
     webCache: { type: "none" as const },
